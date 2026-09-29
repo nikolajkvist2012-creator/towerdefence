@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tower Defense</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="game">
+    <!-- HUD: liv, penge, bølge og start-knap -->
+    <header id="hud">
+      <div class="stat"><span class="label">Liv</span><span id="lives" class="value lives">20</span></div>
+      <div class="stat"><span class="label">Penge</span><span id="money" class="value money">100</span></div>
+      <div class="stat"><span class="label">Bølge</span><span id="wave" class="value">0</span></div>
+      <span id="mapName" class="map-badge"></span>
+      <span id="modeBadge" class="mode-badge hidden">TEST</span>
+      <button id="musicBtn" class="btn icon" title="Musik til/fra" aria-label="Musik til/fra">🎵</button>
+      <button id="sfxBtn" class="btn icon" title="Lydeffekter til/fra" aria-label="Lydeffekter til/fra">🔊</button>
+      <button id="menuBtn" class="btn secondary">Menu</button>
+      <button id="startWave" class="btn primary">Start bølge</button>
+    </header>
+
+    <div id="board">
+      <canvas id="canvas"></canvas>
+
+      <!-- Panel for et valgt tårn (vises når man klikker på et tårn) -->
+      <div id="towerPanel" class="tower-panel hidden">
+        <div class="tp-head">
+          <strong id="tpName"></strong>
+          <button id="tpClose" class="tp-close" aria-label="Luk">×</button>
+        </div>
+        <p id="tpInfo" class="tp-info"></p>
+        <button id="tpSell" class="btn sell">Sælg for <span id="tpSellValue"></span></button>
+      </div>
+
+      <!-- Startmenu: vælg spiltilstand (knapperne bygges ud fra config.js) -->
+      <div id="startMenu" class="overlay">
+        <div class="panel">
+          <h1 class="title">Tower Defense</h1>
+          <p>Vælg spiltilstand</p>
+          <div id="modeButtons" class="mode-buttons"></div>
+        </div>
+      </div>
+
+      <!-- Valg af bane (kortene bygges ud fra config.js og map.js) -->
+      <div id="mapMenu" class="overlay scroll hidden">
+        <div class="panel wide">
+          <h1 class="title">Vælg bane</h1>
+          <div id="mapCards" class="map-cards"></div>
+          <button id="mapBack" class="btn secondary">Tilbage</button>
+        </div>
+      </div>
+
+      <!-- Sejrsskærm efter sidste bølge -->
+      <div id="victory" class="overlay hidden">
+        <div class="panel">
+          <h1 class="win">Du vandt!</h1>
+          <p id="victoryText"></p>
+          <button id="playAgain" class="btn primary">Spil igen</button>
+          <button id="victoryMenu" class="btn secondary">Menu</button>
+        </div>
+      </div>
+
+      <!-- Game over-skærm -->
+      <div id="gameOver" class="overlay hidden">
+        <div class="panel">
+          <h1>Game over</h1>
+          <p id="gameOverText"></p>
+          <button id="retry" class="btn primary">Prøv igen</button>
+          <button id="toMenu" class="btn secondary">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tårnmenu: knapperne bygges ud fra config.js i ui.js -->
+    <nav id="towerMenu" aria-label="Vælg tårn"></nav>
+
+    <!-- Kun i TEST-tilstand: send fjender ind med det samme (knapperne bygges i ui.js) -->
+    <div id="spawnBar" class="spawn-bar hidden">
+      <span class="spawn-label">TEST – send fjende ind:</span>
+    </div>
+    <p class="hint">Vælg et tårn, og klik på et ledigt græsfelt for at bygge det. Hold musen over et tårn for at se rækkevidden.<br>
+      <strong>Sælg:</strong> klik (eller højreklik) på et tårn, og tryk "Sælg". Du får 70 % af prisen tilbage.<br>
+      <strong>Store tårne:</strong> byg 4 ens tårne i en 2×2-firkant, vælg et andet tårn, og klik på firkanten. Det store tårn skyder som de 4 og får det nye tårns effekt. 4 Farm + 1 Farm = Factory.</p>
+  </main>
+
+  <div id="tooltip" class="tooltip hidden"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
