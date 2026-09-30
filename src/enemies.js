@@ -14,6 +14,7 @@ export class Enemy {
   constructor(type, waypoints, hpMultiplier = 1, speedMultiplier = 1) {
     const def = CONFIG.enemies[type];
     this.type = type;
+    this.hpMultiplier = hpMultiplier; // gives videre, hvis fjenden bliver til en anden (Metal → Kerne)
     this.maxHp = Math.round(def.hp * hpMultiplier);
     this.hp = this.maxHp;
     this.speed = def.speed * speedMultiplier;
@@ -26,6 +27,7 @@ export class Enemy {
     this.loseOnEscape = !!def.loseOnEscape; // slipper den ud, taber man med det samme
     this.transformsInto = def.transformsInto ?? null; // fx Metal → Kerne, når den dør
     this.regen = def.regen ?? null;                   // fx Kerne: heler, når den ikke bliver ramt
+    this.glow = def.glow ?? null;                     // Kerne og Rød Kerne: farverne i glødet
     this.regenTimer = this.regen ? this.regen.interval : 0;
     this.healFlash = 0;                               // kort grønt glimt, når den heler
 
@@ -129,9 +131,9 @@ export class Enemy {
   }
 
   // Lav den fjende, denne bliver til, når den dør (fx Metal → Kerne).
-  // Den nye fortsætter fra præcis samme sted på stien.
+  // Den nye fortsætter fra præcis samme sted på stien og får samme liv-gange (fx Hardcore: dobbelt).
   transform() {
-    const next = new Enemy(this.transformsInto, this.waypoints, 1, this.speed / CONFIG.enemies[this.type].speed);
+    const next = new Enemy(this.transformsInto, this.waypoints, this.hpMultiplier, this.speed / CONFIG.enemies[this.type].speed);
     next.x = this.x;
     next.y = this.y;
     next.nextWp = this.nextWp;
@@ -144,7 +146,7 @@ export class Enemy {
       this.drawMetal(ctx);
       return;
     }
-    if (this.type === 'core') {
+    if (this.glow) { // Kerne og Rød Kerne
       this.drawCore(ctx);
       return;
     }
@@ -205,16 +207,17 @@ export class Enemy {
     this.drawBossBar(ctx);
   }
 
-  // Kernen: blå, pulserende, glødende kugle
+  // Kernen: pulserende, glødende kugle (blå eller rød – farverne står i config.js under 'glow')
   drawCore(ctx) {
     const R = this.radius;
+    const c = this.glow;
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 180);
     const g = ctx.createRadialGradient(this.x, this.y, R * 0.1, this.x, this.y, R);
-    g.addColorStop(0, '#e6f6ff');
+    g.addColorStop(0, c.light);
     g.addColorStop(0.45, this.color);
-    g.addColorStop(1, '#0d4f99');
+    g.addColorStop(1, c.dark);
     ctx.save();
-    ctx.shadowColor = this.poison ? '#5dff3a' : '#5cc2ff';
+    ctx.shadowColor = this.poison ? '#5dff3a' : c.shadow;
     ctx.shadowBlur = 12 + pulse * 12;
     ctx.beginPath();
     ctx.arc(this.x, this.y, R, 0, Math.PI * 2);
@@ -222,7 +225,7 @@ export class Enemy {
     ctx.fill();
     ctx.restore();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = this.poison ? '#7dff5a' : `rgba(200, 235, 255, ${0.5 + pulse * 0.5})`;
+    ctx.strokeStyle = this.poison ? '#7dff5a' : `rgba(${c.rim}, ${0.5 + pulse * 0.5})`;
     ctx.stroke();
     if (this.healFlash > 0) {
       // Grønt glimt, når den heler

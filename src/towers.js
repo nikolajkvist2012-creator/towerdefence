@@ -7,6 +7,7 @@ import { sound } from './audio.js';
 export class Tower {
   // opts.size: 1 eller 2 felter; opts.modifier: tårntypen hvis effekt det store tårn har
   // opts.rangeMultiplier: fra banen (fx Ørken: 0.85)
+  // opts.income: fra tilstanden (fx Hardcore: Farm 50) – udeladt = config-værdien
   constructor(type, c, r, opts = {}) {
     const def = CONFIG.towers[type];
     this.type = type;
@@ -16,6 +17,7 @@ export class Tower {
     this.size = opts.size ?? 1;
     this.modifier = opts.modifier ?? null;
     this.stats = computeStats(def, this.modifier, opts.rangeMultiplier ?? 1);
+    if (opts.income !== undefined) this.stats.income = opts.income;
     // Alle elementer tårnet har i sig: grundtypens + effektens (fx Basis + Lyn → lyn)
     this.elements = new Set(
       [def.element, this.modifier && CONFIG.towers[this.modifier].element].filter(Boolean),
@@ -204,6 +206,16 @@ export function computeStats(def, modifier, rangeMultiplier = 1) {
     st.chainFalloff = st.chainFalloff ?? fx.chainFalloff;
   }
   return st;
+}
+
+// Penge pr. klaret bølge for en tårntype – tilstanden kan ændre det (fx Hardcore: Farm 50)
+export function incomeFor(type, mode) {
+  return CONFIG.modes[mode]?.towerIncome?.[type] ?? CONFIG.towers[type].income;
+}
+
+// Tårnets beskrivelse med den rigtige indkomst sat ind i stedet for {income}
+export function towerDescription(type, mode) {
+  return CONFIG.towers[type].description.replace('{income}', incomeFor(type, mode));
 }
 
 // Kan denne tårntype indgå i et stort tårn? (Farm kan ikke)

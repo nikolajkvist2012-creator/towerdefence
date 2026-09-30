@@ -2,8 +2,8 @@
 import { CONFIG } from './config.js';
 import { GameMap, pixelToCell, key } from './map.js';
 import { Enemy } from './enemies.js';
-import { Tower, canMerge, computeStats } from './towers.js';
-import { buildWave, hpMultiplierFor } from './waves.js';
+import { Tower, canMerge, computeStats, incomeFor, towerDescription } from './towers.js';
+import { buildWave, hpMultiplierFor, waveRules } from './waves.js';
 import { Effects } from './effects.js';
 import { UI } from './ui.js';
 import { sound } from './audio.js';
@@ -22,14 +22,17 @@ let selectedTower = null;   // tårnet, hvis panel er åbent (til salg)
 
 function newState(mode, mapId) {
   const rules = CONFIG.maps[mapId];
+  const modeRules = CONFIG.modes[mode];
   return {
-    mode,                                            // 'normal' eller 'test'
+    mode,                                            // 'normal', 'test' eller 'hardcore'
     mapId,                                           // fx 'lava'
-    infiniteMoney: CONFIG.modes[mode].infiniteMoney, // TEST: alt er gratis
+    infiniteMoney: modeRules.infiniteMoney,          // TEST: alt er gratis
     enemySpeedMultiplier: rules.enemySpeedMultiplier ?? 1,
+    enemyHpMultiplier: modeRules.enemyHpMultiplier ?? 1, // Hardcore: dobbelt liv
     towerRangeMultiplier: rules.towerRangeMultiplier ?? 1,
+    totalWaves: waveRules(mode).totalWaves,          // Hardcore: 25
     lives: CONFIG.startLives,
-    money: rules.startMoney ?? CONFIG.startMoney,
+    money: modeRules.startMoney ?? rules.startMoney ?? CONFIG.startMoney,
     spawnCount: 0,       // tæller fjender, så de skiftes mellem stierne
     wave: 0,
     waveActive: false,
@@ -54,7 +57,7 @@ const ui = new UI({
   // Startmenu: først tilstand, derefter bane
   onSelectMode: (mode) => {
     pendingMode = mode;
-    ui.showMapMenu();
+    ui.showMapMenu(mode);
   },
   onSelectMap: (mapId) => {
     startGame(pendingMode, mapId);
@@ -90,26 +93,30 @@ sound.playMusic('menu'); // starter, så snart man klikker første gang
 function startGame(mode, mapId) {
   map = new GameMap(mapId);
   state = newState(mode, mapId);
+  ui.setMode(mode); // tooltips viser tilstandens tal (fx Farm-indkomst)
   closePanel();
   sound.playMusic(mapId); // hver bane har sin egen melodi
 }
 
-// Tårne får banens rækkevidde-regel (fx sandstorm)
+// Tårne får banens rækkevidde-regel (fx sandstorm) og tilstandens indkomst (fx Hardcore: Farm 50)
 function makeTower(type, c, r, opts = {}) {
-  return new Tower(type, c, r, { ...opts, rangeMultiplier: state.towerRangeMultiplier });
+  return new Tower(type, c, r, {
+    ...opts, rangeMultiplier: state.towerRangeMultiplier, income: incomeFor(type, state.mode),
+  });
 }
 
 // Send én fjende ind på banen. Med flere stier skiftes fjenderne til at tage hver sin.
 function spawnEnemy(type, hpMultiplier = 1) {
   const path = map.paths[state.spawnCount % map.paths.length];
   state.spawnCount++;
-  state.enemies.push(new Enemy(type, path, hpMultiplier, state.enemySpeedMultiplier));
+  const modeHp = CONFIG.enemies[type].ignoreModeHp ? 1 : state.enemyHpMultiplier; // fx Rød Kerne: altid 10000
+  state.enemies.push(new Enemy(type, path, hpMultiplier * modeHp, state.enemySpeedMultiplier));
 }
 
 function startWave() {
   if (!state || state.waveActive || state.gameOver || state.won) return;
   state.wave++;
-  state.spawnQueue = buildWave(state.wave);
+  state.spawnQueue = buildWave(state.wave, state.mode);
   state.spawnTimer = 0;
   state.waveActive = true;
 }
@@ -181,7 +188,7 @@ function update(dt) {
     state.waveActive = false;
     payFarmIncome();
     // Sidste bølge klaret → sejr
-    if (state.wave >= CONFIG.waves.totalWaves) {
+    if (state.wave >= state.totalWaves) {
       state.won = true;
       closePanel();
       ui.showVictory(state);
@@ -190,12 +197,12 @@ function update(dt) {
   }
 }
 
-// Hver Farm udbetaler penge, når en bølge er klaret, og viser "+30" over sig
+// Hver Farm udbetaler penge, når en bølge er klaret, og viser fx "+30" over sig
 function payFarmIncome() {
   for (const t of state.towers) {
-    if (!t.def.income) continue;
-    state.money += t.def.income;
-    state.effects.addText(t.x, t.y - CONFIG.tileSize * t.size * 0.5, `+${t.def.income}`, '#ffd257', 22, 1.4);
+    if (!t.stats.income) continue;
+    state.money += t.stats.income;
+    state.effects.addText(t.x, t.y - CONFIG.tileSize * t.size * 0.5, `+${t.stats.income}`, '#ffd257', 22, 1.4);
     sound.sfx('coin'); // spilles kun én gang, selv med mange Farme
   }
 }
@@ -240,7 +247,7 @@ function drawHover() {
       const cost = CONFIG.towers[selectedType].cost;
       const text = modifier
         ? `${CONFIG.towers[type].name} + ${CONFIG.towers[modifier].name}: ${CONFIG.mergeEffects[modifier].description} (${cost})`
-        : `${CONFIG.towers[type].name}: ${CONFIG.towers[type].description} (${cost})`;
+        : `${CONFIG.towers[type].name}: ${towerDescription(type, state.mode)} (${cost})`;
       drawLabel(cx, block.r * s - 6, text);
       return;
     }

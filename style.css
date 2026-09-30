@@ -1,5 +1,7 @@
 * { box-sizing: border-box; }
 
+:root { color-scheme: dark; } /* spillet er altid mørkt */
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -20,8 +22,9 @@ body {
 /* ---------- HUD ---------- */
 #hud {
   display: flex;
+  flex-wrap: wrap; /* smalle skærme: knapperne ryger ned på en ny linje */
   align-items: center;
-  gap: 20px;
+  gap: 12px 20px;
   padding: 10px 14px;
   margin-bottom: 10px;
   background: #272c36;
@@ -290,5 +293,6 @@ canvas {
 }
 .mode-btn:hover { border-color: #4fa3ff; background: #3b4251; }
 .mode-btn.test:hover { border-color: #ffb347; }
+.mode-btn.hardcore:hover { border-color: #e8554e; }
 .mode-btn strong { display: block; font-size: 18px; margin-bottom: 4px; }
 .mode-btn span { font-size: 13px; color: #9aa3b2; }

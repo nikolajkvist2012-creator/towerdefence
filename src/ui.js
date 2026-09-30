@@ -1,6 +1,6 @@
 // UI: HUD, tårnmenu med tooltip og game over-skærm (HTML-elementer omkring canvas).
 import { CONFIG } from './config.js';
-import { drawTowerShape } from './towers.js';
+import { drawTowerShape, towerDescription } from './towers.js';
 import { GameMap } from './map.js';
 
 const el = (id) => document.getElementById(id);
@@ -21,6 +21,7 @@ export class UI {
     this.gameOver = el('gameOver');
     this.gameOverText = el('gameOverText');
     this.tooltip = el('tooltip');
+    this.mode = 'normal'; // den tilstand, der spilles – bruges til tooltips
 
     this.startBtn.addEventListener('click', onStartWave);
     el('retry').addEventListener('click', onRetry);
@@ -100,6 +101,7 @@ export class UI {
   // Ét kort pr. bane i config.js, med et lille billede af banen
   buildMapCards(onSelectMap) {
     const box = el('mapCards');
+    this.mapMoney = {}; // bane-id → "Startpenge"-teksten, som afhænger af tilstanden
     for (const [id, def] of Object.entries(CONFIG.maps)) {
       const card = document.createElement('button');
       card.className = 'map-card';
@@ -119,7 +121,7 @@ export class UI {
       desc.textContent = def.description;
       const money = document.createElement('span');
       money.className = 'map-money';
-      money.textContent = `Startpenge: ${def.startMoney ?? CONFIG.startMoney}`;
+      this.mapMoney[id] = money;
 
       card.append(preview, name, desc, money);
       card.addEventListener('click', () => onSelectMap(id));
@@ -153,7 +155,12 @@ export class UI {
     this.startMenu.classList.remove('hidden');
   }
 
-  showMapMenu() {
+  // Startpengene på kortene: tilstandens egne (fx Hardcore: 500) eller banens
+  showMapMenu(mode) {
+    for (const [id, node] of Object.entries(this.mapMoney)) {
+      const money = CONFIG.modes[mode].startMoney ?? CONFIG.maps[id].startMoney ?? CONFIG.startMoney;
+      node.textContent = `Startpenge: ${money}`;
+    }
     this.startMenu.classList.add('hidden');
     this.mapMenu.classList.remove('hidden');
     this.mapMenu.scrollTop = 0;
@@ -195,12 +202,16 @@ export class UI {
 
       btn.append(icon, text);
       btn.addEventListener('click', () => onSelectTower(type));
-      btn.addEventListener('mouseenter', () => this.showTooltip(btn, def));
+      btn.addEventListener('mouseenter', () => this.showTooltip(btn, type));
       btn.addEventListener('mouseleave', () => this.hideTooltip());
 
       menu.append(btn);
       this.towerButtons[type] = btn;
     }
+  }
+
+  setMode(mode) {
+    this.mode = mode;
   }
 
   setSelectedTower(type) {
@@ -209,7 +220,8 @@ export class UI {
     }
   }
 
-  showTooltip(btn, def) {
+  showTooltip(btn, type) {
+    const def = CONFIG.towers[type];
     const t = this.tooltip;
     t.replaceChildren();
     const title = document.createElement('strong');
@@ -218,7 +230,7 @@ export class UI {
     cost.className = 'tt-cost';
     cost.textContent = `${def.cost} penge`;
     const desc = document.createElement('p');
-    desc.textContent = def.description;
+    desc.textContent = towerDescription(type, this.mode);
     t.append(title, cost, desc);
     t.classList.remove('hidden');
 
@@ -238,7 +250,7 @@ export class UI {
   update(state) {
     setText(this.lives, state.lives);
     setText(this.money, state.infiniteMoney ? '∞' : state.money);
-    setText(this.wave, `${state.wave} / ${CONFIG.waves.totalWaves}`);
+    setText(this.wave, `${state.wave} / ${state.totalWaves}`);
     this.modeBadge.classList.toggle('hidden', state.mode !== 'test');
     this.spawnBar.classList.toggle('hidden', state.mode !== 'test');
     setText(this.mapName, CONFIG.maps[state.mapId].name);
@@ -266,7 +278,7 @@ export class UI {
 
   showVictory(state) {
     el('victoryText').textContent =
-      `Du klarede alle ${CONFIG.waves.totalWaves} bølger på ${CONFIG.maps[state.mapId].name}-banen ` +
+      `Du klarede alle ${state.totalWaves} bølger på ${CONFIG.maps[state.mapId].name}-banen ` +
       `med ${state.lives} liv tilbage.`;
     this.victory.classList.remove('hidden');
   }

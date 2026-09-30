@@ -51,6 +51,11 @@ export const CONFIG = {
   },
 
   // Spiltilstande, man vælger i startmenuen
+  //  startMoney: erstatter banens startpenge (udeladt = banens egne)
+  //  enemyHpMultiplier: alle fjenders liv ganges med dette – også bosserne (Metal og Kerne)
+  //  towerIncome: erstatter tårnenes 'income' (penge pr. klaret bølge)
+  //  waves: ekstra bølgeregler oven på CONFIG.waves – totalWaves erstatter,
+  //         counts/mixedIn/bosses lægges til (se kommentarerne ved CONFIG.waves)
   modes: {
     normal: {
       name: 'Normal',
@@ -62,6 +67,26 @@ export const CONFIG = {
       description: 'Uendelige penge – til at afprøve tårne.',
       infiniteMoney: true,
     },
+    hardcore: {
+      name: 'Hardcore',
+      description: 'Alle fjender har dobbelt liv. Start med 500 penge. 25 bølger.',
+      infiniteMoney: false,
+      startMoney: 500,
+      enemyHpMultiplier: 2,
+      towerIncome: { farm: 50, factory: 225 },
+      waves: {
+        totalWaves: 25,
+        counts: [
+          { from: 16, to: 20, count: 24 }, // dobbelt så mange som i bølge 15
+          { from: 21, to: 25, count: 16 }, // + 3 Metal og 1 Kerne = 20 fjender
+        ],
+        mixedIn: [
+          { from: 20, to: 20, types: ['metal', 'metal'] },
+          { from: 21, to: 25, types: ['metal', 'metal', 'metal', 'core'] },
+        ],
+        bosses: [{ wave: 25, type: 'redCore', delayBefore: 2.5 }], // slutbossen
+      },
+    },
   },
 
   // Tårne. Rækkefølgen her er også rækkefølgen i tårnmenuen.
@@ -69,6 +94,7 @@ export const CONFIG = {
   //          'hitscan' = rammer med det samme (sniper)
   //  targeting: 'nearest' | 'first' | 'last' | 'strongest'
   //  element: 'lightning' | 'poison' – fjender kan være immune over for et element
+  //  {income} i en beskrivelse erstattes med tårnets indkomst i den valgte tilstand
   towers: {
     basic: {
       name: 'Basis',
@@ -127,7 +153,7 @@ export const CONFIG = {
     },
     farm: {
       name: 'Farm',
-      description: 'Skyder ikke, men giver 30 penge, hver gang en bølge er klaret.',
+      description: 'Skyder ikke, men giver {income} penge, hver gang en bølge er klaret.',
       cost: 200,
       attack: null,         // angriber ikke
       range: 0,
@@ -136,7 +162,7 @@ export const CONFIG = {
     },
     factory: {
       name: 'Factory',
-      description: 'Giver 135 penge, hver gang en bølge er klaret.',
+      description: 'Giver {income} penge, hver gang en bølge er klaret.',
       buildable: false,     // kan ikke købes i menuen – laves af 4 Farm + 1 Farm
       cost: 0,
       attack: null,
@@ -222,7 +248,7 @@ export const CONFIG = {
       radius: 20,            // dobbelt så stor
       color: '#aab3bf',
       immune: ['lightning'], // lyn preller af på metal
-      boss: true,            // kommer kun som boss (se waves.boss), ikke i det almindelige mix
+      boss: true,            // kommer kun som boss (se waves.bosses), ikke i det almindelige mix
       loseOnEscape: true,    // slipper den ud af banen, taber man med det samme
       transformsInto: 'core', // når den dør, knuses skallen, og Kernen fortsætter samme sted
     },
@@ -239,19 +265,37 @@ export const CONFIG = {
       // Heling: når den ikke har taget skade (heller ikke gift) i 'interval' sekunder,
       // får den 'amount' liv – og igen hvert 'interval' sekund, indtil den bliver ramt
       regen: { amount: 100, interval: 2 },
+      // Farverne i glødet (den blå Kerne og den Røde Kerne tegnes ens, bare i hver sin farve)
+      glow: { light: '#e6f6ff', dark: '#0d4f99', shadow: '#5cc2ff', rim: '200, 235, 255' },
+    },
+    redCore: {
+      name: 'Rød Kerne',
+      hp: 10000,
+      ignoreModeHp: true,    // 10000 liv i alt – Hardcore fordobler det ikke
+      speed: 12,
+      reward: 700,
+      radius: 20,
+      color: '#e8413a',
+      immune: [],
+      boss: true,            // Hardcore-slutboss i bølge 25
+      loseOnEscape: true,
+      regen: { amount: 100, interval: 2 },
+      glow: { light: '#ffe6e3', dark: '#8f1410', shadow: '#ff5c4d', rim: '255, 210, 205' },
     },
   },
 
   // Bølger
+  //  counts: antal almindelige fjender i hver bølge
+  //  mixedIn: bosser, der fordeles med lige stor afstand ind imellem de almindelige fjender
+  //  bosses: bosser, der kommer til sidst i en bestemt bølge (efter en lille pause)
   waves: {
     totalWaves: 15,     // klarer man den sidste bølge, har man vundet
-    // Antal almindelige fjender i hver bølge
     counts: [
       { from: 1, to: 5, count: 5 },
       { from: 6, to: 10, count: 7 },
       { from: 11, to: 15, count: 12 },
     ],
-    boss: { wave: 15, type: 'metal', delayBefore: 2.5 }, // bossen kommer til sidst i bølge 15
+    bosses: [{ wave: 15, type: 'metal', delayBefore: 2.5 }], // Metal kommer til sidst i bølge 15
     hpGrowth: 1,        // fjendernes liv ganges med dette for hver bølge (1 = samme liv i alle bølger)
     // Fra denne bølge får de almindelige fjender (ikke bosser) ganget deres liv op
     hpBoost: { fromWave: 7, multiplier: 2 }, // bølge 7-15: dobbelt liv (50 → 100)
